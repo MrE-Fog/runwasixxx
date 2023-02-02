@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -ex
+
+export RUSTFLAGS='-C target-feature=+crt-static'
+HOSTPLATFORM=$(rustc -vV | grep host: | awk '{print $2'})
+
+cargo build --release --bin='containerd*wasmtime*' --target=$HOSTPLATFORM
+if [ -n "$ENABLE_WASMEDGE" ]; then
+  cargo build --release --bin='containerd-*wasmedge*' --target=$HOSTPLATFORM
+fi

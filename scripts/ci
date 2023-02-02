@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -ex
+
+SCRIPTS_DIR=$(dirname $0)
+
+export RUSTUP_HOME=/usr/local/rustup
+export CARGO_HOME=/usr/local/cargo
+export PATH=/usr/local/cargo/bin:$PATH
+export ENABLE_WASMEDGE=
+
+if [ -n "$DRONE_WORKSPACE" ]; then
+    $SCRIPTS_DIR/setup-env
+fi
+
+$SCRIPTS_DIR/build
+$SCRIPTS_DIR/package

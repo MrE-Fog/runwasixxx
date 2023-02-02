@@ -1,0 +1,33 @@
+#!/bin/sh
+
+set -ex
+
+apk add -U --no-cache bash curl gawk sed pkgconf autoconf automake cmake make gzip git tar openssl-dev musl-dev binutils gcc rust rust-stdlib cargo
+
+if [ -n "$ENABLE_WASMEDGE" ]; then
+  VERSION_WASMEDGE=0.12.0-alpha.1
+  # unpack wasmedge
+  mkdir -p /usr/src
+  apk add -U --no-cache clang15 clang15-dev clang15-libclang clang15-static boost1.80 boost-dev 
+  curl -sfL https://github.com/WasmEdge/WasmEdge/archive/refs/tags/$VERSION_WASMEDGE.tar.gz | tar -zx -C /usr/src
+  #curl -sfL https://github.com/WasmEdge/WasmEdge/archive/refs/heads/master.tar.gz | tar -zx -C /usr/src
+
+  # build and install wasmedge
+  cd /usr/src/WasmEdge-*
+  echo -n $VERSION_WASMEDGE > VERSION
+  export CC=/usr/bin/clang
+  export CXX=/usr/bin/clang++
+  sed -i 's/-Wno-undefined-func-template/&\n    -Wno-unused-const-variable/' cmake/Helper.cmake
+  cmake -DCMAKE_BUILD_TYPE=Release -DWASMEDGE_BUILD_STATIC_LIB=ON -DWASMEDGE_BUILD_SHARED_LIB=ON -DWASMEDGE_BUILD_AOT_RUNTIME=OFF -DWASMEDGE_BUILD_TOOLS=OFF -Wno-dev ./
+  make install
+  cd -
+
+  # point the wasmedge crate at the local wasmedge packages
+  for PACKAGE_PATH in $(find /usr/src/WasmEdge-*/bindings/rust/ -mindepth 1 -maxdepth 1 -type d); do
+    PACKAGE_NAME=$(basename $PACKAGE_PATH)
+    sed -i 's|runtime|static|' $PACKAGE_PATH/Cargo.toml
+    sed -i "/$PACKAGE_NAME/d" crates/wasmedge/Cargo.toml
+    sed -i "s|\[dependencies\]|&\n$PACKAGE_NAME = { path = \"$PACKAGE_PATH\" }|" crates/wasmedge/Cargo.toml
+  done
+fi
+

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -ex
+
+export RUST_ARCH=$(rustc -vV | grep host: | awk '{print $2'})
+export ARCH=$(echo $RUST_ARCH | awk -F- '{print $1}')
+
+BINS="containerd-shim-wasmtime-v1 containerd-shim-wasmtimed-v1 containerd-wasmtimed"
+if [ -n "$ENABLE_WASMEDGE" ]; then
+  $BINS="$BINS containerd-shim-wasmedge-v1 containerd-shim-wasmedged-v1 containerd-wasmedged"
+fi
+
+mkdir -p dist/artifacts
+tar -zcvf dist/artifacts/runwasi-${ARCH}.tgz -C target/$RUST_ARCH/release $BINS
